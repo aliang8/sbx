@@ -1,0 +1,62 @@
+seed: 123
+env_id: assembly-v2
+env_name: metaworld
+
+exp_name: ${algo_name}_e-${env_id}_t-${total_timesteps}_s-${seed}
+
+results_dir: results
+video_dir: videos
+log_dir: logs
+ckpt_dir: ckpts
+eval_dir: evals
+ckpt_prefix: "ckpt"
+
+wandb:
+  project: sb3_mw
+  entity: aliangdw
+  tags: 
+    - mw
+    - ${env_id}
+    - ${algo_name}]
+  notes: "mw base policy"
+  sync_tensorboard: True
+  monitor_gym: True
+  save_code: True
+
+mode: train
+n_train_envs: 20
+n_eval_envs: 20
+n_eval_episodes: 20
+
+progress_bar: True
+total_timesteps: 5_000_000
+
+num_evals: 20
+eval_freq: -1
+save_video_freq: -1
+num_save_ckpts: 20
+save_ckpt_freq: -1
+save_replay_buffer: True
+gradient_save_freq: 10_000
+
+use_wandb: False
+
+algo_name: sac
+
+debug: False
+
+env_kwargs:
+  n_frame_stack: 4
+
+# for replaying from ckpt
+ckpt_file_name: ${algo_name}_e-${env_id}_t-20_s-${seed}
+ckpt_step: 20
+num_episodes_replay: 1
+fps: 10
+
+
+defaults:
+  - _self_
+  - algo: sac
+  - override hydra/job_logging: disabled
+  - override hydra/launcher: local

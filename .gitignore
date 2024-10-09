@@ -1,0 +1,6 @@
+results/*
+__pycache__/*
+outputs/*
+results/*
+test/*
+utils/__pycache__/*
