@@ -3,7 +3,7 @@ from functools import partial
 from pathlib import Path
 
 import hydra
-import wandb
+import jax
 from omegaconf import DictConfig
 from sbx import PPO, SAC
 from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
@@ -14,14 +14,33 @@ from stable_baselines3.common.vec_env import (
     SubprocVecEnv,
     VecVideoRecorder,
 )
-from wandb.integration.sb3 import WandbCallback
 
+import wandb
 from utils.callbacks import (
     SaveEvalVideoCallback,
 )
 from utils.env_utils import env_fn
 from utils.general_utils import omegaconf_to_dict, print_dict
 from utils.logger import log
+from wandb.integration.sb3 import WandbCallback
+
+jax.config.update("jax_debug_nans", True)
+jax.config.parse_flags_with_absl()
+import os
+
+# remove tensorflow debug messages
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+# prevent jax from preallocating all gpu memory
+os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
+# make sure that the model training is deterministic
+os.environ["TF_CUDNN_DETERMINISTIC"] = "1"
+
+import tensorflow as tf
+from prompt_dtla.utils.logger import *
+
+tf_config = tf.compat.v1.ConfigProto()
+tf_config.gpu_options.allow_growth = True
+tf.config.experimental.set_visible_devices([], "GPU")
 
 
 @hydra.main(version_base=None, config_name="config", config_path="cfg")
@@ -158,8 +177,8 @@ def main(cfg: DictConfig):
         logger = configure(log_dir, ["stdout", "csv", "tensorboard"])
         model.set_logger(logger)
 
-        log(f"callback_list: {callback_list}")
-        log(f"start training for {cfg.env_id}, num timesteps: {cfg.total_timesteps}")
+        log(f"Callback_list: {callback_list}")
+        log(f"Start training for {cfg.env_id}, num timesteps: {cfg.total_timesteps}")
 
         model.learn(
             total_timesteps=cfg.total_timesteps,
@@ -167,9 +186,9 @@ def main(cfg: DictConfig):
             callback=callback_list,
         )
 
-        log("finished training, saving model one last time...")
+        log("Finished training, saving model one last time...")
     elif cfg.mode == "eval":
-        log(f"running evaluation... load model from {cfg.ckpt_file_name}")
+        log(f"Running evaluation... load model from {cfg.ckpt_file_name}")
 
         exp_dir = Path(cfg.results_dir) / cfg.ckpt_file_name
         model_ckpt_file = exp_dir / "ckpts" / f"ckpt_{cfg.ckpt_step}_steps.zip"

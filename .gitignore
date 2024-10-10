@@ -4,3 +4,5 @@ outputs/*
 results/*
 test/*
 utils/__pycache__/*
+multirun/*
+wandb/*
