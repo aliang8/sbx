@@ -29,3 +29,9 @@ class FrameStackWrapper(gym.Wrapper):
         self.frames = np.roll(self.frames, shift=-1, axis=0)
         self.frames[-1] = obs
         return self.frames, reward, terminated, truncated, info
+
+
+class FlipImageWrapper(gym.Wrapper):
+    def render(self):
+        img = self.env.render()
+        return np.flip(img, axis=0)

@@ -1,11 +1,12 @@
+import os
 import sys
 from functools import partial
 from pathlib import Path
 
 import hydra
-import jax
+from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig
-from sbx import PPO, SAC
+from stable_baselines3 import PPO, SAC
 from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.logger import configure
@@ -24,10 +25,6 @@ from utils.general_utils import omegaconf_to_dict, print_dict
 from utils.logger import log
 from wandb.integration.sb3 import WandbCallback
 
-jax.config.update("jax_debug_nans", True)
-jax.config.parse_flags_with_absl()
-import os
-
 # remove tensorflow debug messages
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 # prevent jax from preallocating all gpu memory
@@ -36,7 +33,6 @@ os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
 os.environ["TF_CUDNN_DETERMINISTIC"] = "1"
 
 import tensorflow as tf
-from prompt_dtla.utils.logger import *
 
 tf_config = tf.compat.v1.ConfigProto()
 tf_config.gpu_options.allow_growth = True
@@ -83,7 +79,18 @@ def main(cfg: DictConfig):
         **vec_env_kwargs,
     )
 
-    exp_dir = Path(cfg.results_dir) / cfg.exp_name
+    # determine if we are sweeping
+    hydra_cfg = HydraConfig.get()
+    launcher = hydra_cfg.runtime["choices"]["hydra/launcher"]
+    sweep = launcher in ["local", "slurm"]
+
+    if sweep:
+        exp_dir = Path(hydra_cfg.sweep.dir) / hydra_cfg.sweep.subdir
+    else:
+        exp_dir = Path(hydra_cfg.run.dir)
+
+    log(f"Experiment directory: {exp_dir}")
+
     if not exp_dir.exists():
         exp_dir.mkdir(parents=True)
 
@@ -123,6 +130,8 @@ def main(cfg: DictConfig):
                 verbose=2,
             )
             callback_list.append(wandb_callback)
+        else:
+            wandb_run = None
 
         if cfg.eval_freq != -1 or cfg.num_evals != -1:
             if cfg.num_evals != -1:
@@ -145,12 +154,19 @@ def main(cfg: DictConfig):
             )
 
             callback_list.append(eval_callback)
+
         if cfg.save_video_freq != -1:
+            save_video_every = max(cfg.save_video_freq // cfg.n_train_envs, 1)
+
+            log(f"Saving video every {save_video_every} timesteps", "yellow")
             save_video_callback = SaveEvalVideoCallback(
                 env_fn=env_fn,
-                save_freq=max(cfg.save_video_freq // cfg.n_train_envs, 1),
+                max_episode_steps=cfg.max_episode_steps,
+                env_id=cfg.env_id,
+                save_freq=save_video_every,
                 video_log_dir=video_dir,
                 n_eval_episodes=cfg.n_eval_episodes,
+                wandb_run=wandb_run,
             )
 
             callback_list.append(save_video_callback)
@@ -164,7 +180,7 @@ def main(cfg: DictConfig):
             else:
                 save_freq = cfg.save_ckpt_freq
 
-            log(f"Saving checkpoint every: {save_freq}")
+            log(f"Saving checkpoint every: {save_freq}", "yellow")
             ckpt_callback = CheckpointCallback(
                 save_freq=save_freq,
                 save_path=ckpt_dir,

@@ -1,14 +1,13 @@
 import os
+import time
 from functools import partial
 
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.results_plotter import load_results, ts2xy
-from stable_baselines3.common.vec_env import (
-    DummyVecEnv,
-    VecVideoRecorder,
-)
+from stable_baselines3.common.vec_env import SubprocVecEnv, VecVideoRecorder
 
+import wandb
 from utils.logger import log
 
 
@@ -92,18 +91,23 @@ class SaveEvalVideoCallback(BaseCallback):
     def __init__(
         self,
         env_fn,
+        max_episode_steps: int,
+        env_id: str,
         save_freq: int,
         video_log_dir: str,
         n_eval_episodes: int = 1,
         verbose: int = 1,
+        wandb_run=None,
     ):
         super().__init__(verbose)
-        self.eval_env = DummyVecEnv(
-            [partial(env_fn, env_idx=i) for i in range(n_eval_episodes)]
+        self.eval_env = SubprocVecEnv(
+            [partial(env_fn, env_id=env_id, env_idx=i) for i in range(n_eval_episodes)]
         )
         self.save_freq = save_freq
         self.video_log_dir = video_log_dir
         self.n_eval_episodes = n_eval_episodes
+        self.wandb_run = wandb_run
+        self.max_episode_steps = max_episode_steps
 
     def _init_callback(self) -> None:
         # Create folder if needed
@@ -112,22 +116,38 @@ class SaveEvalVideoCallback(BaseCallback):
 
     def _on_step(self) -> bool:
         if self.n_calls % self.save_freq == 0:
+            start = time.time()
             log(f"saving evaluation video to {self.video_log_dir}")
             # Record the video starting at the first step
             self.eval_env = VecVideoRecorder(
                 self.eval_env,
                 self.video_log_dir,
                 record_video_trigger=lambda x: x == 0,
-                # video_length=video_length,
+                video_length=self.max_episode_steps,
                 name_prefix="agent",
             )
 
             # run evaluate policy here
             mean_rew, std_rew = evaluate_policy(
-                self.model, self.eval_env, n_eval_episodes=10, render=True
+                self.model,
+                self.eval_env,
+                n_eval_episodes=10,
+                render=True,
+                deterministic=False,
             )
+            time_elapsed = time.time() - start
+            log(f"evaluation video saved  in {time_elapsed:.2f} seconds")
 
-            log("evaluation video saved")
+            # log video to wandb
+            if self.wandb_run is not None:
+                video_name = "agent-step-0-to-step-200.mp4"
+                self.wandb_run.log(
+                    {
+                        "rollout_videos/": wandb.Video(
+                            f"{self.video_log_dir}/{video_name}", fps=15
+                        )
+                    }
+                )
         return True
 
 

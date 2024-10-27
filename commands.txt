@@ -1,7 +1,0 @@
-python3 run_sbx.py
-
-CUDA_VISIBLE_DEVICES=7 python3 run_sbx.py mode=train env_id=drawer-open-v2 use_wandb=True debug=True
-
-# buffer stuff
-
-CUDA_VISIBLE_DEVICES=7 python3 load_sbx_replay_buffer.py mode=train env_id=drawer-open-v2 debug=True

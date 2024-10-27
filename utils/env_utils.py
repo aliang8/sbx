@@ -1,10 +1,11 @@
 import metaworld
 import numpy as np
+from gymnasium.wrappers import TimeLimit
 
-from utils.wrappers import FrameStackWrapper
+from utils.wrappers import FlipImageWrapper, FrameStackWrapper
 
 
-def env_fn(env_id, env_idx, n_frame_stack=4):
+def env_fn(env_id, env_idx, n_frame_stack=4, max_episode_steps=200):
     ml1 = metaworld.ML1(env_id)
     env_cls = ml1.train_classes[env_id]
 
@@ -24,5 +25,6 @@ def env_fn(env_id, env_idx, n_frame_stack=4):
     if n_frame_stack > 1:
         env = FrameStackWrapper(env, n_stack=4)
 
-    # env = TimeLimit(env, max_episode_steps=200)
+    env = FlipImageWrapper(env)
+    env = TimeLimit(env, max_episode_steps=max_episode_steps)
     return env

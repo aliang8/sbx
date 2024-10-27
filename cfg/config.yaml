@@ -47,12 +47,16 @@ debug: False
 
 env_kwargs:
   n_frame_stack: 4
+  max_episode_steps: 200
 
 # for replaying from ckpt
-ckpt_file_name: ${algo_name}_e-${env_id}_t-20_s-${seed}
-ckpt_step: 20
+ckpt_file_name: null
+ckpt_step: null
 num_episodes_replay: 1
 fps: 10
+
+# for offline dataset saving
+data_dir: /scr/shared/prompt_dtla
 
 
 defaults:
@@ -60,3 +64,16 @@ defaults:
   - algo: sac
   - override hydra/job_logging: disabled
   - override hydra/launcher: local
+
+# set the directory where the output files get saved
+hydra:
+  job:
+    name: ${exp_name}
+
+  output_subdir: null
+  run:
+    dir: results/${exp_name}/${now:%Y-%m-%d}-${now:%H-%M-%S}
+  
+  sweep:
+    dir: results/${now:%Y-%m-%d}-${now:%H-%M-%S}
+    subdir: ${exp_name}
