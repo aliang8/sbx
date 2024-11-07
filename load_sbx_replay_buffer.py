@@ -7,7 +7,7 @@ import numpy as np
 import tqdm
 from omegaconf import DictConfig
 from prompt_dtla.scripts.data import save_dataset
-from sbx import PPO, SAC
+from stable_baselines3 import PPO, SAC
 
 from utils.env_utils import env_fn
 from utils.general_utils import omegaconf_to_dict, print_dict

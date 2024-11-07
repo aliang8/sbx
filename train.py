@@ -119,6 +119,7 @@ def main(cfg: DictConfig):
 
         callback_list = []
         if cfg.use_wandb:
+            cfg.exp_dir = str(exp_dir)  # update this
             wandb_run = wandb.init(
                 **cfg.wandb,
                 name=cfg.exp_name,
@@ -155,17 +156,13 @@ def main(cfg: DictConfig):
 
             callback_list.append(eval_callback)
 
-        if cfg.save_video_freq != -1:
-            save_video_every = max(cfg.save_video_freq // cfg.n_train_envs, 1)
-
-            log(f"Saving video every {save_video_every} timesteps", "yellow")
             save_video_callback = SaveEvalVideoCallback(
                 env_fn=env_fn,
-                max_episode_steps=cfg.max_episode_steps,
+                max_episode_steps=cfg.env_kwargs.max_episode_steps,
                 env_id=cfg.env_id,
-                save_freq=save_video_every,
+                save_freq=eval_freq,
                 video_log_dir=video_dir,
-                n_eval_episodes=cfg.n_eval_episodes,
+                n_eval_episodes=cfg.n_eval_videos_render,
                 wandb_run=wandb_run,
             )
 

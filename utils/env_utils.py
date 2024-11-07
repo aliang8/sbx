@@ -2,10 +2,17 @@ import metaworld
 import numpy as np
 from gymnasium.wrappers import TimeLimit
 
-from utils.wrappers import FlipImageWrapper, FrameStackWrapper
+from utils.wrappers import FlipImageWrapper, FrameStackWrapper, SaveTrajectoryWrapper
 
 
-def env_fn(env_id, env_idx, n_frame_stack=4, max_episode_steps=200):
+def env_fn(
+    env_id,
+    env_idx,
+    n_frame_stack=4,
+    max_episode_steps=200,
+    save_trajectory: bool = False,
+    save_imgs: bool = False,
+):
     ml1 = metaworld.ML1(env_id)
     env_cls = ml1.train_classes[env_id]
 
@@ -22,9 +29,13 @@ def env_fn(env_id, env_idx, n_frame_stack=4, max_episode_steps=200):
     env.seed(env_idx)
     np.random.set_state(st0)
 
-    if n_frame_stack > 1:
-        env = FrameStackWrapper(env, n_stack=4)
-
     env = FlipImageWrapper(env)
+
+    if n_frame_stack > 1:
+        env = FrameStackWrapper(env, n_stack=4, save_imgs=save_imgs)
+
     env = TimeLimit(env, max_episode_steps=max_episode_steps)
+
+    if save_trajectory:
+        env = SaveTrajectoryWrapper(env, save_imgs=save_imgs)
     return env
