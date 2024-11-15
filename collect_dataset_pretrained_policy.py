@@ -20,6 +20,17 @@ from utils.env_utils import env_fn
 from utils.logger import log
 
 
+def num_to_short(num):
+    if num < 1e3:
+        return str(num)
+    elif num < 1e6:
+        return str(num / 1e3) + "k"
+    elif num < 1e9:
+        return str(num / 1e6) + "M"
+    else:
+        return str(num / 1e9) + "B"
+
+
 @hydra.main(config_path="cfg", config_name="config")
 def main(cfg: DictConfig):
     log("start collecting dataset", "blue")
@@ -47,13 +58,15 @@ def main(cfg: DictConfig):
 
     log(f"collecting {cfg.n_eval_episodes} trajectories", "yellow")
     start = time.time()
-    evaluate_policy(
+    mean_rew, std_rew = evaluate_policy(
         model,
         data_collection_env,
         n_eval_episodes=cfg.n_eval_episodes,
         render=False,
         deterministic=False,
     )
+
+    log(f"mean reward: {mean_rew}, std reward: {std_rew}")
     time_elapsed = time.time() - start
     log(f"collecting {cfg.n_eval_episodes} trajectories took {time_elapsed:.2f}s")
 
@@ -97,6 +110,9 @@ def main(cfg: DictConfig):
         dataset_name = f"{cfg.env_id}_imgs"
     else:
         dataset_name = cfg.env_id
+
+    step_shorthand = num_to_short(int(cfg.ckpt_step))
+    dataset_name += f"_ckpt-{step_shorthand}_n-{cfg.n_eval_episodes}"
     save_file = Path(cfg.data_dir) / "tensorflow_datasets" / "metaworld" / dataset_name
 
     save_dataset(

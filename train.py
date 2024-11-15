@@ -4,12 +4,14 @@ from functools import partial
 from pathlib import Path
 
 import hydra
+import numpy as np
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig
 from stable_baselines3 import PPO, SAC
 from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.logger import configure
+from stable_baselines3.common.noise import NormalActionNoise
 from stable_baselines3.common.vec_env import (
     DummyVecEnv,
     SubprocVecEnv,
@@ -79,6 +81,15 @@ def main(cfg: DictConfig):
         **vec_env_kwargs,
     )
 
+    n_actions = train_envs.action_space.shape[0]
+
+    if hasattr(cfg.algo, "action_noise") and cfg.action_noise > 0:
+        action_noise = NormalActionNoise(
+            mean=np.zeros(n_actions), sigma=cfg.action_noise * np.ones(n_actions)
+        )
+    else:
+        action_noise = None
+
     # determine if we are sweeping
     hydra_cfg = HydraConfig.get()
     launcher = hydra_cfg.runtime["choices"]["hydra/launcher"]
@@ -110,6 +121,7 @@ def main(cfg: DictConfig):
         verbose=1,
         device="cuda",
         **cfg.algo,
+        action_noise=action_noise,
         # train_freq=(1, "episode"),  # update every episode
     )
 
@@ -164,6 +176,7 @@ def main(cfg: DictConfig):
                 video_log_dir=video_dir,
                 n_eval_episodes=cfg.n_eval_videos_render,
                 wandb_run=wandb_run,
+                env_kwargs=cfg.env_kwargs,
             )
 
             callback_list.append(save_video_callback)

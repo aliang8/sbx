@@ -98,10 +98,14 @@ class SaveEvalVideoCallback(BaseCallback):
         n_eval_episodes: int = 1,
         verbose: int = 1,
         wandb_run=None,
+        env_kwargs=None,
     ):
         super().__init__(verbose)
         self.eval_env = SubprocVecEnv(
-            [partial(env_fn, env_id=env_id, env_idx=i) for i in range(n_eval_episodes)]
+            [
+                partial(env_fn, env_id=env_id, env_idx=i, **env_kwargs)
+                for i in range(n_eval_episodes)
+            ]
         )
         self.save_freq = save_freq
         self.video_log_dir = video_log_dir
@@ -140,7 +144,7 @@ class SaveEvalVideoCallback(BaseCallback):
 
             # log video to wandb
             if self.wandb_run is not None:
-                video_name = "agent-step-0-to-step-200.mp4"
+                video_name = f"agent-step-0-to-step-{self.max_episode_steps}.mp4"
                 self.wandb_run.log(
                     {
                         "rollout_videos/": wandb.Video(

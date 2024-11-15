@@ -9,7 +9,7 @@ def env_fn(
     env_id,
     env_idx,
     n_frame_stack=4,
-    max_episode_steps=200,
+    max_episode_steps=500,
     save_trajectory: bool = False,
     save_imgs: bool = False,
 ):

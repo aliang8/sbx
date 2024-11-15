@@ -31,7 +31,7 @@ n_eval_episodes: 20
 n_eval_videos_render: 9
 
 progress_bar: False
-total_timesteps: 10_000_000
+total_timesteps: 20_000_000
 
 num_evals: 30
 eval_freq: -1
@@ -45,6 +45,8 @@ use_wandb: False
 algo_name: sac
 
 debug: False
+
+action_noise: 0.1
 
 env_kwargs:
   n_frame_stack: 4
